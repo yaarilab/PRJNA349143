@@ -5,8 +5,8 @@ evaluate(new File("nextflow_header.config"))
 params.metadata.metadata = "${projectDir}/tools.json"
 
 if (!params.reads){params.reads = ""} 
-if (!params.mate_pair){params.mate_pair = ""} 
-if (!params.mate_single){params.mate_single = ""} 
+if (!params.mate){params.mate = ""} 
+if (!params.mate2){params.mate2 = ""} 
 
 if (params.reads){
 Channel
@@ -17,8 +17,8 @@ Channel
 	g_4_reads_g1_0 = Channel.empty()
  }
 
-Channel.value(params.mate_pair).into{g_11_mate_g15_9;g_11_mate_g53_9;g_11_mate_g13_14;g_11_mate_g13_12;g_11_mate_g13_10;g_11_mate_g1_7;g_11_mate_g1_5;g_11_mate_g1_0;g_11_mate_g20_15;g_11_mate_g9_9;g_11_mate_g9_12;g_11_mate_g9_11;g_11_mate_g12_15;g_11_mate_g12_19;g_11_mate_g12_12}
-Channel.value(params.mate_single).into{g_54_mate_g21_16;g_54_mate_g18_9;g_54_mate_g18_12;g_54_mate_g18_11}
+Channel.value(params.mate).into{g_11_mate_g15_9;g_11_mate_g53_9;g_11_mate_g13_14;g_11_mate_g13_12;g_11_mate_g13_10;g_11_mate_g1_7;g_11_mate_g1_5;g_11_mate_g1_0;g_11_mate_g20_15;g_11_mate_g9_9;g_11_mate_g9_12;g_11_mate_g9_11;g_11_mate_g12_15;g_11_mate_g12_19;g_11_mate_g12_12}
+Channel.value(params.mate2).into{g_54_mate_g21_16;g_54_mate_g18_9;g_54_mate_g18_12;g_54_mate_g18_11}
 
 
 process Filter_Sequence_Quality_filter_seq_quality {
