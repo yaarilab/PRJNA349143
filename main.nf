@@ -12,19 +12,58 @@ if (params.reads){
 Channel
 	.fromFilePairs( params.reads , size: params.mate == "single" ? 1 : params.mate == "pair" ? 2 : params.mate == "triple" ? 3 : params.mate == "quadruple" ? 4 : -1 )
 	.ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
-	.set{g_4_reads_g1_0}
+	.set{g_4_reads_g_82}
  } else {  
-	g_4_reads_g1_0 = Channel.empty()
+	g_4_reads_g_82 = Channel.empty()
  }
 
-Channel.value(params.mate).into{g_11_mate_g15_9;g_11_mate_g53_9;g_11_mate_g13_14;g_11_mate_g13_12;g_11_mate_g13_10;g_11_mate_g1_7;g_11_mate_g1_5;g_11_mate_g1_0;g_11_mate_g20_15;g_11_mate_g9_9;g_11_mate_g9_12;g_11_mate_g9_11;g_11_mate_g12_15;g_11_mate_g12_19;g_11_mate_g12_12}
+Channel.value(params.mate).into{g_11_mate_g_82;g_11_mate_g15_9;g_11_mate_g53_9;g_11_mate_g13_14;g_11_mate_g13_12;g_11_mate_g13_10;g_11_mate_g1_7;g_11_mate_g1_5;g_11_mate_g1_0;g_11_mate_g20_15;g_11_mate_g9_9;g_11_mate_g9_12;g_11_mate_g9_11;g_11_mate_g12_15;g_11_mate_g12_19;g_11_mate_g12_12}
 Channel.value(params.mate2).into{g_54_mate_g21_16;g_54_mate_g18_9;g_54_mate_g18_12;g_54_mate_g18_11}
+
+
+process unizp {
+
+input:
+ set val(name),file(reads) from g_4_reads_g_82
+ val mate from g_11_mate_g_82
+
+output:
+ set val(name),file("*.fastq")  into g_82_reads0_g1_0
+
+script:
+
+readArray = reads.toString().split(' ')	
+R1 = readArray[0]
+R2 = readArray[1]
+
+"""
+case "$R1" in
+*.gz | *.tgz ) 
+        gunzip -c $R1 > R1.fastq
+        ;;
+*)
+        cp $R1 ./R1.fastq
+        echo "$R1 not gzipped"
+        ;;
+esac
+
+case "$R2" in
+*.gz | *.tgz ) 
+        gunzip -c $R2 > R2.fastq
+        ;;
+*)
+        cp $R2 ./R2.fastq
+        echo "$R2 not gzipped"
+        ;;
+esac
+"""
+}
 
 
 process Filter_Sequence_Quality_filter_seq_quality {
 
 input:
- set val(name),file(reads) from g_4_reads_g1_0
+ set val(name),file(reads) from g_82_reads0_g1_0
  val mate from g_11_mate_g1_0
 
 output:
@@ -1567,7 +1606,6 @@ SplitSeq.py group -s ${readArray} -f ${field} ${num} ${fasta}
 
 process vdjbase_input {
 
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /${chain}$/) "reads/$filename"}
 input:
  set val(name),file(reads) from g_80_fastaFile0_g_81
 
