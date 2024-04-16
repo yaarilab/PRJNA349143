@@ -1606,6 +1606,7 @@ SplitSeq.py group -s ${readArray} -f ${field} ${num} ${fasta}
 
 process vdjbase_input {
 
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /${chain}$/) "reads/$filename"}
 input:
  set val(name),file(reads) from g_80_fastaFile0_g_81
 
@@ -1615,13 +1616,10 @@ output:
 script:
 chain = params.vdjbase_input.chain
 
-
-
-'''
-#!/bin/sh 
+"""
 mkdir ${chain}
 mv ${reads} ${chain}
-'''
+"""
 
 }
 
