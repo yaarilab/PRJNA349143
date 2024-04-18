@@ -17,8 +17,8 @@ Channel
 	g_4_reads_g_82 = Channel.empty()
  }
 
-Channel.value(params.mate).into{g_11_mate_g_82;g_11_mate_g15_9;g_11_mate_g53_9;g_11_mate_g13_14;g_11_mate_g13_12;g_11_mate_g13_10;g_11_mate_g1_7;g_11_mate_g1_5;g_11_mate_g1_0;g_11_mate_g20_15;g_11_mate_g9_9;g_11_mate_g9_12;g_11_mate_g9_11;g_11_mate_g12_15;g_11_mate_g12_19;g_11_mate_g12_12}
-Channel.value(params.mate2).into{g_54_mate_g21_16;g_54_mate_g18_9;g_54_mate_g18_12;g_54_mate_g18_11}
+Channel.value(params.mate).into{g_11_mate_g_82;g_11_mate_g15_9;g_11_mate_g53_9;g_11_mate_g20_15;g_11_mate_g1_0;g_11_mate_g1_5;g_11_mate_g1_7;g_11_mate_g9_11;g_11_mate_g9_9;g_11_mate_g9_12;g_11_mate_g13_10;g_11_mate_g13_12;g_11_mate_g13_14;g_11_mate_g12_12;g_11_mate_g12_15;g_11_mate_g12_19}
+Channel.value(params.mate2).into{g_54_mate_g21_16;g_54_mate_g18_11;g_54_mate_g18_9;g_54_mate_g18_12}
 
 
 process unizp {
@@ -105,13 +105,13 @@ if(mate=="pair"){
 	R1 = readArray[0]
 	R2 = readArray[1]
 	"""
-	FilterSeq.py ${method} -s $R1 ${q} ${n_length} ${n_missing} --nproc ${nproc} --log FS_R1_${name}.log --failed ${fasta} >> out_${R1}_FS.log
-	FilterSeq.py ${method} -s $R2 ${q} ${n_length} ${n_missing} --nproc ${nproc} --log FS_R2_${name}.log --failed ${fasta} >> out_${R1}_FS.log
+	FilterSeq.py ${method} -s $R1 ${q} ${n_length} ${n_missing} --nproc ${nproc} --log FS_R1_${name}.log --failed ${fasta} 2>&1 | tee -a out_${R1}_FS.log
+	FilterSeq.py ${method} -s $R2 ${q} ${n_length} ${n_missing} --nproc ${nproc} --log FS_R2_${name}.log --failed ${fasta} 2>&1 | tee -a out_${R1}_FS.log
 	"""
 }else{
 	R1 = readArray[0]
 	"""
-	FilterSeq.py ${method} -s $R1 ${q} ${n_length} ${n_missing} --nproc ${nproc} --log FS_${name}.log --failed ${fasta} >> out_${R1}_FS.log
+	FilterSeq.py ${method} -s $R1 ${q} ${n_length} ${n_missing} --nproc ${nproc} --log FS_${name}.log --failed ${fasta} 2>&1 | tee -a out_${R1}_FS.log
 	"""
 }
 
@@ -127,7 +127,7 @@ input:
  val mate from g_11_mate_g1_5
 
 output:
- set val(name), file("*table.tab")  into g1_5_logFile0_g1_7, g1_5_logFile0_g1_16
+ file "*table.tab"  into g1_5_logFile0_g1_7, g1_5_logFile0_g1_16
 
 script:
 readArray = log_file.toString()
@@ -143,7 +143,7 @@ process Filter_Sequence_Quality_report_filter_Seq_Quality {
 
 input:
  val mate from g_11_mate_g1_7
- set val(name), file(log_files) from g1_5_logFile0_g1_7
+ file log_files from g1_5_logFile0_g1_7
 
 output:
  file "*.rmd"  into g1_7_rMarkdown0_g1_16
@@ -156,6 +156,7 @@ if(mate=="pair"){
 	R1 = readArray[0]
 	R2 = readArray[1]
 
+	name = R1 - "_table.tab"
 	'''
 	#!/usr/bin/env perl
 	
@@ -212,7 +213,7 @@ if(mate=="pair"){
 
 	readArray = log_files.toString().split(' ')
 	R1 = readArray[0]
-	
+	name = R1 - "_table.tab"
 	'''
 	#!/usr/bin/env perl
 	
@@ -297,7 +298,7 @@ output:
  set val(name), file("*_primers-pass.fastq")  into g9_11_reads0_g53_9
  set val(name), file("*_primers-fail.fastq") optional true  into g9_11_reads_failed11
  set val(name), file("MP_*")  into g9_11_logFile2_g9_9
- set val(name),file("out*")  into g9_11_logFile3_g72_0
+ set val(name),file("out*")  into g9_11_logFile33
 
 script:
 method = params.Mask_Primer_1_MaskPrimers.method
@@ -358,7 +359,7 @@ def args_values = [];
     pf = (pf=="") ? "" : "--pf ${pf}"
     bc = (bc=="false") ? "" : "--barcode"
     rp = (rp=="false") ? "" : "--revpr"
-    args_values.add("${m} --mode ${md} ${bf} ${pf} ${bc} ${rp} ${mr} ${s} ${el} ${ml} ${sk}")
+    args_values.add("${m} --mode ${md} ${bc} ${rp} ${mr} ${s} ${el} ${ml} ${sk} ${pf} ${bf}")
     
     
 }}
@@ -380,8 +381,9 @@ if(mate=="pair"){
 	
 	"""
 	
-	MaskPrimers.py ${args_1} -s ${R1} ${R1_primers} --log MP_R1_${name}.log  --nproc ${nproc} ${failed} >> out_${R1}_MP.log
-	MaskPrimers.py ${args_2} -s ${R2} ${R2_primers} --log MP_R2_${name}.log  --nproc ${nproc} ${failed} >> out_${R1}_MP.log
+	MaskPrimers.py ${args_1} -s ${R1} ${R1_primers} --log MP_R1_${name}.log  --nproc ${nproc} ${failed} 2>&1 | tee -a out_${R1}_MP.log & \
+	MaskPrimers.py ${args_2} -s ${R2} ${R2_primers} --log MP_R2_${name}.log  --nproc ${nproc} ${failed} 2>&1 | tee -a out_${R1}_MP.log & \
+	wait
 	"""
 }else{
 	args_1 = args_values[0]
@@ -393,22 +395,64 @@ if(mate=="pair"){
 	"""
 	echo -e "Assuming inputs for R1\n"
 	
-	MaskPrimers.py ${args_1} -s ${reads} ${R1_primers} --log MP_${name}.log  --nproc ${nproc} ${failed} >> out_${R1}_MP.log
+	MaskPrimers.py ${args_1} -s ${reads} ${R1_primers} --log MP_${name}.log  --nproc ${nproc} ${failed} 2>&1 | tee -a out_${R1}_MP.log
 	"""
 }
 
 }
 
 
+process Pair_Sequence_pre_consensus_pair_seq {
+
+input:
+ set val(name),file(reads) from g9_11_reads0_g53_9
+ val mate from g_11_mate_g53_9
+
+output:
+ set val(name),file("*_pair-pass.fastq")  into g53_9_reads0_g13_10
+ set val(name),file("out*")  into g53_9_logFile1_g72_0
+
+script:
+coord = params.Pair_Sequence_pre_consensus_pair_seq.coord
+act = params.Pair_Sequence_pre_consensus_pair_seq.act
+copy_fields_1 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_1
+copy_fields_2 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_2
+failed = params.Pair_Sequence_pre_consensus_pair_seq.failed
+nproc = params.Pair_Sequence_pre_consensus_pair_seq.nproc
+
+if(mate=="pair"){
+	
+	act = (act=="none") ? "" : "--act ${act}"
+	failed = (failed=="true") ? "--failed" : "" 
+	copy_fields_1 = (copy_fields_1=="") ? "" : "--1f ${copy_fields_1}" 
+	copy_fields_2 = (copy_fields_2=="") ? "" : "--2f ${copy_fields_2}"
+	
+	readArray = reads.toString().split(' ')	
+	R1 = readArray[0]
+	R2 = readArray[1]
+	"""
+	PairSeq.py -1 ${R1} -2 ${R2} ${copy_fields_1} ${copy_fields_2} --coord ${coord} ${act} ${failed} >> out_${R1}_PS.log
+	"""
+}else{
+	
+	"""
+	echo -e 'PairSeq works only on pair-end reads.'
+	"""
+}
+
+
+}
+
+
 process Mask_Primer_1_parse_log_MP {
 
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.tab$/) "MP1_log_table/$filename"}
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*table.tab$/) "MP1_log_table/$filename"}
 input:
  val mate from g_11_mate_g9_9
  set val(name), file(log_file) from g9_11_logFile2_g9_9
 
 output:
- set val(name), file("*.tab")  into g9_9_logFile0_g9_12
+ file "*table.tab"  into g9_9_logFile0_g9_12, g9_9_logFile0_g9_19
 
 script:
 readArray = log_file.toString()	
@@ -423,20 +467,20 @@ ParseLog.py -l ${readArray}  -f ID PRIMER BARCODE ERROR
 process Mask_Primer_1_try_report_maskprimer {
 
 input:
- set val(name), file(primers) from g9_9_logFile0_g9_12
- val matee from g_11_mate_g9_12
+ file primers from g9_9_logFile0_g9_12
+ val mate from g_11_mate_g9_12
 
 output:
- file "*.rmd"  into g9_12_rMarkdown0_g9_16
+ file "*.rmd"  into g9_12_rMarkdown0_g9_19
 
 
 shell:
 
-if(matee=="pair"){
+if(mate=="pair"){
 	readArray = primers.toString().split(' ')	
 	primers_1 = readArray[0]
 	primers_2 = readArray[1]
-
+	name = primers_1 - "_table.tab"
 	'''
 	#!/usr/bin/env perl
 	
@@ -475,6 +519,10 @@ if(matee=="pair"){
 	```{r, echo=FALSE}
 	primer_log_1 <- loadLogTable(file.path(".", "!{primers_1}"))
 	primer_log_2 <- loadLogTable(file.path(".", "!{primers_2}"))
+	
+	primer_log1_error <- any(is.na(primer_log_1[['ERROR']]))
+	primer_log2_error<- any(is.na(primer_log_2[['ERROR']]))
+	
 	```
 	
 	# Primer Identification
@@ -489,7 +537,8 @@ if(matee=="pair"){
 	## Count of primer matches
 	
 	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles,
+	if(!primer_log1_error && !primer_log2_error)
+		plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles,
 	                style="count", sizing="figure")
 	```
 	
@@ -498,14 +547,17 @@ if(matee=="pair"){
 	## Primer match error rates
 	
 	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
+	if(!primer_log1_error && !primer_log2_error)
+		plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
 	                style="hist", sizing="figure")
 	```
 	
 	`r figures("primers_hist")`
 	
 	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
+	# check the error column exists 
+	if(!primer_log1_error && !primer_log2_error)
+		plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
 	                style="error", sizing="figure")
 	```
 	
@@ -522,8 +574,8 @@ if(matee=="pair"){
 }else{
 
 	readArray = primers.toString().split(' ')
-	primers = readArray.grep(~/.*.tab*/)[0]
-
+	primers = readArray[0]
+	name = primers - "_table.tab"
 	'''
 	#!/usr/bin/env perl
 	
@@ -608,15 +660,16 @@ if(matee=="pair"){
 }
 
 
-process Mask_Primer_1_render_rmarkdown {
+process Mask_Primer_1_presto_render_rmarkdown {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.html$/) "MP_report/$filename"}
 input:
- file rmk from g9_12_rMarkdown0_g9_16
+ file rmk from g9_12_rMarkdown0_g9_19
+ file log_file from g9_9_logFile0_g9_19
 
 output:
- file "*.html"  into g9_16_outputFileHTML00
- file "*csv" optional true  into g9_16_csvFile11
+ file "*.html"  into g9_19_outputFileHTML00
+ file "*csv" optional true  into g9_19_csvFile11
 
 """
 
@@ -625,48 +678,6 @@ output:
 rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
 
 """
-}
-
-
-process Pair_Sequence_pre_consensus_pair_seq {
-
-input:
- set val(name),file(reads) from g9_11_reads0_g53_9
- val mate from g_11_mate_g53_9
-
-output:
- set val(name),file("*_pair-pass.fastq")  into g53_9_reads0_g13_10
- set val(name),file("out*")  into g53_9_logFile1_g72_0
-
-script:
-coord = params.Pair_Sequence_pre_consensus_pair_seq.coord
-act = params.Pair_Sequence_pre_consensus_pair_seq.act
-copy_fields_1 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_1
-copy_fields_2 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_2
-failed = params.Pair_Sequence_pre_consensus_pair_seq.failed
-nproc = params.Pair_Sequence_pre_consensus_pair_seq.nproc
-
-if(mate=="pair"){
-	
-	act = (act=="none") ? "" : "--act ${act}"
-	failed = (failed=="true") ? "--failed" : "" 
-	copy_fields_1 = (copy_fields_1=="") ? "" : "--1f ${copy_fields_1}" 
-	copy_fields_2 = (copy_fields_2=="") ? "" : "--2f ${copy_fields_2}"
-	
-	readArray = reads.toString().split(' ')	
-	R1 = readArray[0]
-	R2 = readArray[1]
-	"""
-	PairSeq.py -1 ${R1} -2 ${R2} ${copy_fields_1} ${copy_fields_2} --coord ${coord} ${act} ${failed} >> out_${R1}_PS.log
-	"""
-}else{
-	
-	"""
-	echo -e 'PairSeq works only on pair-end reads.'
-	"""
-}
-
-
 }
 
 boolean isCollectionOrArray_bc(object) {    
@@ -697,8 +708,9 @@ def args_creator_bc(barcode_field, primer_field, act, copy_field, mincount, minq
             pc = (pc=="none") ? "" : "--prcons ${pc}" 
             mg = (mg=="none") ? "" : "--maxgap ${mg}" 
             md = (md=="none") ? "" : "--maxdiv ${md}" 
+            mc = (mc=="none") ? "" : "--n ${mc}" 
             d = (d=="true") ? "--dep" : "" 
-            args_values.add("${bf} ${pf} ${a} ${cf} -n ${mc} -q ${mq} --freq ${mf} ${mr} ${pc} ${mg} ${md} ${d}")
+            args_values.add("${bf} ${pf} ${a} ${cf} ${mc} -q ${mq} --freq ${mf} ${mr} ${pc} ${mg} ${md} ${d}")
         }}
     }else{
         barcode_field = (barcode_field=="") ? "" : "--bf ${barcode_field}"
@@ -725,7 +737,7 @@ input:
 output:
  set val(name),file("*_consensus-pass.fastq")  into g13_10_reads0_g15_9
  set val(name),file("BC*")  into g13_10_logFile1_g13_12
- set val(name),file("out*")  into g13_10_logFile2_g72_0
+ set val(name),file("out*")  into g13_10_logFile22
 
 script:
 failed = params.Build_Consensus_build_consensus.failed
@@ -766,12 +778,12 @@ if(mate=="pair"){
 	
 	"""
 	BuildConsensus.py --version
-	BuildConsensus.py -s $R1 ${args_1} --log BC_${name}_R1.log ${failed} --nproc ${nproc} >> out_${R1}_BC.log
-	BuildConsensus.py -s $R2 ${args_2} --log BC_${name}_R2.log ${failed} --nproc ${nproc} >> out_${R1}_BC.log
+	BuildConsensus.py -s $R1 ${args_1} --log BC_${name}_R1.log ${failed} --nproc ${nproc} 2>&1 | tee -a out_${R1}_BC.log
+	BuildConsensus.py -s $R2 ${args_2} --log BC_${name}_R2.log ${failed} --nproc ${nproc} 2>&1 | tee -a out_${R1}_BC.log
 	"""
 }else{
 	"""
-	BuildConsensus.py -s $reads ${args_1} --outname ${name} --log BC_${name}.log ${failed} --nproc ${nproc} >> out_${R1}_BC.log
+	BuildConsensus.py -s $reads ${args_1} --outname ${name} --log BC_${name}.log ${failed} --nproc ${nproc} 2>&1 | tee -a out_${R1}_BC.log
 	"""
 }
 
@@ -818,6 +830,257 @@ if(mate=="pair"){
 }
 
 
+}
+
+
+process Build_Consensus_parse_log_BC {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*table.tab$/) "BC_log_table/$filename"}
+input:
+ set val(name),file(log_file) from g13_10_logFile1_g13_12
+ val mate from g_11_mate_g13_12
+
+output:
+ file "*table.tab"  into g13_12_logFile0_g13_14, g13_12_logFile0_g13_20
+
+script:
+readArray = log_file.toString()
+
+"""
+ParseLog.py -l ${readArray} -f BARCODE SEQCOUNT CONSCOUNT PRCONS PRFREQ ERROR
+"""
+
+}
+
+
+process Build_Consensus_report_Build_Consensus {
+
+input:
+ val matee from g_11_mate_g13_14
+ file log_files from g13_12_logFile0_g13_14
+
+output:
+ file "*.rmd"  into g13_14_rMarkdown0_g13_20
+
+
+
+
+shell:
+
+if(matee=="pair"){
+	readArray = log_files.toString().split(' ')	
+	R1 = readArray[0]
+	R2 = readArray[1]
+	name = R1-"_table.tab"
+	'''
+	#!/usr/bin/env perl
+	
+	
+	my $script = <<'EOF';
+	
+	
+	
+	```{R, message=FALSE, echo=FALSE, results="hide"}
+	# Setup
+	library(prestor)
+	library(knitr)
+	library(captioner)
+	
+	plot_titles <- c("Read 1", "Read 2")
+	if (!exists("tables")) { tables <- captioner(prefix="Table") }
+	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
+	figures("cons_size", 
+	        paste("Histogram of UMI read group sizes (reads per UMI) for",  
+	              plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
+	              "The x-axis indicates the number of reads in a UMI group and the y-axis is the 
+	               number of UMI groups with that size. The Consensus and Total bars are overlayed 
+	               (not stacked) histograms indicating whether the distribution has been calculated 
+	               using the total number of reads (Total) or only those reads used for consensus 
+	               generation (Consensus)."))
+	figures("cons_prfreq", 
+	        paste("Histograms showing the distribution of majority primer frequency for all UMI read groups for",
+	              plot_titles[1], "(top) and", plot_titles[2], "(bottom)."))
+	figures("cons_prsize", 
+	        paste("Violin plots showing the distribution of UMI read group sizes by majority primer for",
+	              plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
+	              "Only groups with majority primer frequency over the PRFREQ threshold set when running
+	               BuildConsensus. Meaning, only retained UMI groups."))
+	figures("cons_error", 
+	        paste("Histogram showing the distribution of UMI read group error rates for",
+	              plot_titles[1], "(top) and", plot_titles[2], "(bottom)."))
+	figures("cons_prerror", 
+	        paste("Violin plots showing the distribution of UMI read group error rates by majority primer for",
+	              plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
+	              "Only groups with majority primer frequency over the PRFREQ threshold set when 
+	               running BuildConsensus. Meaning, only retained UMI groups."))
+	```
+	
+	```{r, echo=FALSE}
+	consensus_log_1 <- loadLogTable(file.path(".", "!{R1}"))
+	consensus_log_2 <- loadLogTable(file.path(".", "!{R2}"))
+	```
+	
+	# Generation of UMI Consensus Sequences
+	
+	Reads sharing the same UMI are collapsed into a single consensus sequence by
+	the BuildConsensus tool. BuildConsensus considers several factors in determining
+	the final consensus sequence, including the number of reads in a UMI group, 
+	Phred quality scores (`Q`), primer annotations, and the number of mismatches 
+	within a UMI group. Quality scores are used to resolve conflicting base calls in
+	a UMI read group and the final consensus sequence is assigned consensus quality 
+	scores derived from the individual base quality scores. The numbers of reads in a UMI
+	group, number of matching primer annotations, and error rate (average base mismatches from 
+	consensus) are used as strict cut-offs for exclusion of erroneous UMI read groups.
+	Additionally, individual reads are excluded whose primer annotation differs from 
+	the majority in cases where there are sufficient number of reads exceeding 
+	the primer consensus cut-off.
+	
+	## Reads per UMI
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
+	                   style="size", sizing="figure")
+	```
+	
+	`r figures("cons_size")`
+	
+	## UMI read group primer frequencies
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
+	                   style="prfreq", sizing="figure")
+	```
+	
+	`r figures("cons_prfreq")`
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
+	                   style="prsize", sizing="figure")
+	```
+	
+	`r figures("cons_prsize")`
+	
+	## UMI read group error rates
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
+	                   style="error", sizing="figure")
+	```
+	
+	`r figures("cons_error")`
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
+	                   style="prerror", sizing="figure")
+	```
+	
+	`r figures("cons_prerror")`
+	
+	EOF
+	
+	open OUT, ">!{name}.rmd";
+	print OUT $script;
+	close OUT;
+	
+	'''
+
+}else{
+	
+	readArray = log_files.toString().split(' ')
+	R1 = readArray[0]
+	name = R1-"_table.tab"
+	'''
+	#!/usr/bin/env perl
+	
+	
+	my $script = <<'EOF';
+	
+	
+	
+		
+	```{R, message=FALSE, echo=FALSE, results="hide"}
+	# Setup
+	library(prestor)
+	library(knitr)
+	library(captioner)
+	
+	if (!exists("tables")) { tables <- captioner(prefix="Table") }
+	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
+	figures("cons_size", "Histogram of UMI read group sizes (reads per UMI). 
+	                      The x-axis indicates the number of reads 
+	                      in a UMI group and the y-axis is the number of UMI groups 
+	                      with that size. The Consensus and Total bars are overlayed
+	                      (not stacked) histograms indicating whether the distribution
+	                      has been calculated using the total number of reads (Total)
+	                      or only those reads used for consensus generation (Consensus).")
+	figures("cons_error", "Histogram showing the distribution of UMI read group error rates.")
+	```
+	
+	```{r, echo=FALSE}
+	consensus_log <- loadLogTable(file.path(".", "!{R1}"))
+	```
+	
+	# Generation of UMI Consensus Sequences
+	
+	Reads sharing the same UMI are collapsed into a single consensus sequence by
+	the BuildConsensus tool. BuildConsensus considers several factors in determining
+	the final consensus sequence, including the number of reads in a UMI group, 
+	Phred quality scores (`Q`), primer annotations, and the number of mismatches 
+	within a UMI group. Quality scores are used to resolve conflicting base calls in
+	a UMI read group and the final consensus sequence is assigned consensus quality 
+	scores derived from the individual base quality scores. The numbers of reads in a UMI
+	group, number of matching primer annotations, and error rate (average base mismatches from 
+	consensus) are used as strict cut-offs for exclusion of erroneous UMI read groups.
+	Additionally, individual reads are excluded whose primer annotation differs from 
+	the majority in cases where there are sufficient number of reads exceeding 
+	the primer consensus cut-off.
+	
+	## Reads per UMI
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotBuildConsensus(consensus_log, style="size", sizing="figure")
+	```
+	
+	`r figures("cons_size")`
+	
+	## UMI read group error rates
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotBuildConsensus(consensus_log, style="error", sizing="figure")
+	```
+	
+	`r figures("cons_error")`
+	
+	EOF
+	
+	open OUT, ">!{name}.rmd";
+	print OUT $script;
+	close OUT;
+	
+	'''
+}
+
+}
+
+
+process Build_Consensus_presto_render_rmarkdown {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.html$/) "BC_report/$filename"}
+input:
+ file rmk from g13_14_rMarkdown0_g13_20
+ file log_file from g13_12_logFile0_g13_20
+
+output:
+ file "*.html"  into g13_20_outputFileHTML00
+ file "*csv" optional true  into g13_20_csvFile11
+
+"""
+
+#!/usr/bin/env Rscript 
+
+rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
+
+"""
 }
 
 
@@ -945,13 +1208,13 @@ if(mate=="pair"){
 
 process Assemble_pairs_parse_log_AP {
 
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.tab$/) "AP_log_table/$filename"}
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*table.tab$/) "AP_log_table/$filename"}
 input:
  set val(name),file(log_file) from g12_12_logFile1_g12_15
  val mate from g_11_mate_g12_15
 
 output:
- set val(name),file("*.tab")  into g12_15_logFile0_g12_19, g12_15_logFile0_g12_25
+ file "*table.tab"  into g12_15_logFile0_g12_25, g12_15_logFile0_g12_19
 
 script:
 field_to_parse = params.Assemble_pairs_parse_log_AP.field_to_parse
@@ -968,7 +1231,7 @@ ParseLog.py -l ${readArray}  -f ${field_to_parse}
 process Assemble_pairs_report_assemble_pairs {
 
 input:
- set val(name),file(log_files) from g12_15_logFile0_g12_19
+ file log_files from g12_15_logFile0_g12_19
  val matee from g_11_mate_g12_19
 
 output:
@@ -981,6 +1244,7 @@ shell:
 if(matee=="pair"){
 	readArray = log_files.toString().split(' ')
 	assemble = readArray[0]
+	name = assemble-"_table.tab"
 	'''
 	#!/usr/bin/env perl
 	
@@ -1111,256 +1375,6 @@ rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_di
 }
 
 
-process Build_Consensus_parse_log_BC {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.tab$/) "BC_log_table/$filename"}
-input:
- set val(name),file(log_file) from g13_10_logFile1_g13_12
- val mate from g_11_mate_g13_12
-
-output:
- set val(name),file("*.tab")  into g13_12_logFile0_g13_14
-
-script:
-readArray = log_file.toString()
-
-"""
-ParseLog.py -l ${readArray} -f BARCODE SEQCOUNT CONSCOUNT PRCONS PRFREQ ERROR
-"""
-
-}
-
-
-process Build_Consensus_report_Build_Consensus {
-
-input:
- set val(name),file(log_files) from g13_12_logFile0_g13_14
- val matee from g_11_mate_g13_14
-
-output:
- file "*.rmd"  into g13_14_rMarkdown0_g13_16
-
-
-
-
-shell:
-
-if(matee=="pair"){
-	readArray = log_files.toString().split(' ')	
-	R1 = readArray[0]
-	R2 = readArray[1]
-
-	'''
-	#!/usr/bin/env perl
-	
-	
-	my $script = <<'EOF';
-	
-	
-	
-	```{R, message=FALSE, echo=FALSE, results="hide"}
-	# Setup
-	library(prestor)
-	library(knitr)
-	library(captioner)
-	
-	plot_titles <- c("Read 1", "Read 2")
-	if (!exists("tables")) { tables <- captioner(prefix="Table") }
-	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
-	figures("cons_size", 
-	        paste("Histogram of UMI read group sizes (reads per UMI) for",  
-	              plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
-	              "The x-axis indicates the number of reads in a UMI group and the y-axis is the 
-	               number of UMI groups with that size. The Consensus and Total bars are overlayed 
-	               (not stacked) histograms indicating whether the distribution has been calculated 
-	               using the total number of reads (Total) or only those reads used for consensus 
-	               generation (Consensus)."))
-	figures("cons_prfreq", 
-	        paste("Histograms showing the distribution of majority primer frequency for all UMI read groups for",
-	              plot_titles[1], "(top) and", plot_titles[2], "(bottom)."))
-	figures("cons_prsize", 
-	        paste("Violin plots showing the distribution of UMI read group sizes by majority primer for",
-	              plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
-	              "Only groups with majority primer frequency over the PRFREQ threshold set when running
-	               BuildConsensus. Meaning, only retained UMI groups."))
-	figures("cons_error", 
-	        paste("Histogram showing the distribution of UMI read group error rates for",
-	              plot_titles[1], "(top) and", plot_titles[2], "(bottom)."))
-	figures("cons_prerror", 
-	        paste("Violin plots showing the distribution of UMI read group error rates by majority primer for",
-	              plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
-	              "Only groups with majority primer frequency over the PRFREQ threshold set when 
-	               running BuildConsensus. Meaning, only retained UMI groups."))
-	```
-	
-	```{r, echo=FALSE}
-	consensus_log_1 <- loadLogTable(file.path(".", "!{R1}"))
-	consensus_log_2 <- loadLogTable(file.path(".", "!{R2}"))
-	```
-	
-	# Generation of UMI Consensus Sequences
-	
-	Reads sharing the same UMI are collapsed into a single consensus sequence by
-	the BuildConsensus tool. BuildConsensus considers several factors in determining
-	the final consensus sequence, including the number of reads in a UMI group, 
-	Phred quality scores (`Q`), primer annotations, and the number of mismatches 
-	within a UMI group. Quality scores are used to resolve conflicting base calls in
-	a UMI read group and the final consensus sequence is assigned consensus quality 
-	scores derived from the individual base quality scores. The numbers of reads in a UMI
-	group, number of matching primer annotations, and error rate (average base mismatches from 
-	consensus) are used as strict cut-offs for exclusion of erroneous UMI read groups.
-	Additionally, individual reads are excluded whose primer annotation differs from 
-	the majority in cases where there are sufficient number of reads exceeding 
-	the primer consensus cut-off.
-	
-	## Reads per UMI
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
-	                   style="size", sizing="figure")
-	```
-	
-	`r figures("cons_size")`
-	
-	## UMI read group primer frequencies
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
-	                   style="prfreq", sizing="figure")
-	```
-	
-	`r figures("cons_prfreq")`
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
-	                   style="prsize", sizing="figure")
-	```
-	
-	`r figures("cons_prsize")`
-	
-	## UMI read group error rates
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
-	                   style="error", sizing="figure")
-	```
-	
-	`r figures("cons_error")`
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotBuildConsensus(consensus_log_1, consensus_log_2, titles=plot_titles, 
-	                   style="prerror", sizing="figure")
-	```
-	
-	`r figures("cons_prerror")`
-	
-	EOF
-	
-	open OUT, ">!{name}.rmd";
-	print OUT $script;
-	close OUT;
-	
-	'''
-
-}else{
-	
-	readArray = log_files.toString().split(' ')
-	R1 = readArray[0]
-	
-	'''
-	#!/usr/bin/env perl
-	
-	
-	my $script = <<'EOF';
-	
-	
-	
-		
-	```{R, message=FALSE, echo=FALSE, results="hide"}
-	# Setup
-	library(prestor)
-	library(knitr)
-	library(captioner)
-	
-	if (!exists("tables")) { tables <- captioner(prefix="Table") }
-	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
-	figures("cons_size", "Histogram of UMI read group sizes (reads per UMI). 
-	                      The x-axis indicates the number of reads 
-	                      in a UMI group and the y-axis is the number of UMI groups 
-	                      with that size. The Consensus and Total bars are overlayed
-	                      (not stacked) histograms indicating whether the distribution
-	                      has been calculated using the total number of reads (Total)
-	                      or only those reads used for consensus generation (Consensus).")
-	figures("cons_error", "Histogram showing the distribution of UMI read group error rates.")
-	```
-	
-	```{r, echo=FALSE}
-	consensus_log <- loadLogTable(file.path(".", "!{R1}"))
-	```
-	
-	# Generation of UMI Consensus Sequences
-	
-	Reads sharing the same UMI are collapsed into a single consensus sequence by
-	the BuildConsensus tool. BuildConsensus considers several factors in determining
-	the final consensus sequence, including the number of reads in a UMI group, 
-	Phred quality scores (`Q`), primer annotations, and the number of mismatches 
-	within a UMI group. Quality scores are used to resolve conflicting base calls in
-	a UMI read group and the final consensus sequence is assigned consensus quality 
-	scores derived from the individual base quality scores. The numbers of reads in a UMI
-	group, number of matching primer annotations, and error rate (average base mismatches from 
-	consensus) are used as strict cut-offs for exclusion of erroneous UMI read groups.
-	Additionally, individual reads are excluded whose primer annotation differs from 
-	the majority in cases where there are sufficient number of reads exceeding 
-	the primer consensus cut-off.
-	
-	## Reads per UMI
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotBuildConsensus(consensus_log, style="size", sizing="figure")
-	```
-	
-	`r figures("cons_size")`
-	
-	## UMI read group error rates
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotBuildConsensus(consensus_log, style="error", sizing="figure")
-	```
-	
-	`r figures("cons_error")`
-	
-	EOF
-	
-	open OUT, ">!{name}.rmd";
-	print OUT $script;
-	close OUT;
-	
-	'''
-}
-
-}
-
-
-process Build_Consensus_render_rmarkdown {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.html$/) "BC_report/$filename"}
-input:
- file rmk from g13_14_rMarkdown0_g13_16
-
-output:
- file "*.html"  into g13_16_outputFileHTML00
- file "*csv" optional true  into g13_16_csvFile11
-
-"""
-
-#!/usr/bin/env Rscript 
-
-rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
-
-"""
-}
-
-
 process Mask_Primer_2_MaskPrimers {
 
 input:
@@ -1371,7 +1385,7 @@ output:
  set val(name), file("*_primers-pass.fastq")  into g18_11_reads0_g20_15
  set val(name), file("*_primers-fail.fastq") optional true  into g18_11_reads_failed11
  set val(name), file("MP_*")  into g18_11_logFile2_g18_9
- set val(name),file("out*")  into g18_11_logFile3_g72_0
+ set val(name),file("out*")  into g18_11_logFile33
 
 script:
 method = params.Mask_Primer_2_MaskPrimers.method
@@ -1432,7 +1446,7 @@ def args_values = [];
     pf = (pf=="") ? "" : "--pf ${pf}"
     bc = (bc=="false") ? "" : "--barcode"
     rp = (rp=="false") ? "" : "--revpr"
-    args_values.add("${m} --mode ${md} ${bf} ${pf} ${bc} ${rp} ${mr} ${s} ${el} ${ml} ${sk}")
+    args_values.add("${m} --mode ${md} ${bc} ${rp} ${mr} ${s} ${el} ${ml} ${sk} ${pf} ${bf}")
     
     
 }}
@@ -1454,8 +1468,9 @@ if(mate=="pair"){
 	
 	"""
 	
-	MaskPrimers.py ${args_1} -s ${R1} ${R1_primers} --log MP_R1_${name}.log  --nproc ${nproc} ${failed} >> out_${R1}_MP.log
-	MaskPrimers.py ${args_2} -s ${R2} ${R2_primers} --log MP_R2_${name}.log  --nproc ${nproc} ${failed} >> out_${R1}_MP.log
+	MaskPrimers.py ${args_1} -s ${R1} ${R1_primers} --log MP_R1_${name}.log  --nproc ${nproc} ${failed} 2>&1 | tee -a out_${R1}_MP.log & \
+	MaskPrimers.py ${args_2} -s ${R2} ${R2_primers} --log MP_R2_${name}.log  --nproc ${nproc} ${failed} 2>&1 | tee -a out_${R1}_MP.log & \
+	wait
 	"""
 }else{
 	args_1 = args_values[0]
@@ -1467,7 +1482,7 @@ if(mate=="pair"){
 	"""
 	echo -e "Assuming inputs for R1\n"
 	
-	MaskPrimers.py ${args_1} -s ${reads} ${R1_primers} --log MP_${name}.log  --nproc ${nproc} ${failed} >> out_${R1}_MP.log
+	MaskPrimers.py ${args_1} -s ${reads} ${R1_primers} --log MP_${name}.log  --nproc ${nproc} ${failed} 2>&1 | tee -a out_${R1}_MP.log
 	"""
 }
 
@@ -1581,6 +1596,7 @@ input:
 
 output:
  set val(name), file("*_atleast-*.fast*")  into g_80_fastaFile0_g_81
+ set val(name),file("out*") optional true  into g_80_logFile1_g72_0
 
 script:
 field = params.split_seq.field
@@ -1598,7 +1614,7 @@ if(num!=0){
 fasta = (fasta=="false") ? "" : "--fasta"
 
 """
-SplitSeq.py group -s ${readArray} -f ${field} ${num} ${fasta}
+SplitSeq.py group -s ${readArray} -f ${field} ${num} ${fasta} >> out_${readArray}_SS.log
 """
 
 }
@@ -1624,242 +1640,12 @@ mv ${reads} ${chain}
 }
 
 
-process Mask_Primer_2_parse_log_MP {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.tab$/) "MP2_log_table/$filename"}
-input:
- val mate from g_54_mate_g18_9
- set val(name), file(log_file) from g18_11_logFile2_g18_9
-
-output:
- set val(name), file("*.tab")  into g18_9_logFile0_g18_12
-
-script:
-readArray = log_file.toString()	
-
-"""
-ParseLog.py -l ${readArray}  -f ID PRIMER BARCODE ERROR
-"""
-
-}
-
-
-process Mask_Primer_2_try_report_maskprimer {
-
-input:
- set val(name), file(primers) from g18_9_logFile0_g18_12
- val matee from g_54_mate_g18_12
-
-output:
- file "*.rmd"  into g18_12_rMarkdown0_g18_16
-
-
-shell:
-
-if(matee=="pair"){
-	readArray = primers.toString().split(' ')	
-	primers_1 = readArray[0]
-	primers_2 = readArray[1]
-
-	'''
-	#!/usr/bin/env perl
-	
-	
-	my $script = <<'EOF';
-	
-	
-	```{r, message=FALSE, echo=FALSE, results="hide"}
-	
-	# Setup
-	library(prestor)
-	library(knitr)
-	library(captioner)
-	
-	
-	plot_titles<- c("Read 1", "Read 2")
-	print(plot_titles)
-	if (!exists("tables")) { tables <- captioner(prefix="Table") }
-	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
-	figures("primers_count", 
-	        paste("Count of assigned primers for",  plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
-	              "The bar height indicates the total reads assigned to the given primer,
-	               stacked for those under the error rate threshold (Pass) and
-	               over the threshold (Fail)."))
-	figures("primers_hist", 
-	        paste("Distribution of primer match error rates for", plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
-	              "The error rate is the percentage of mismatches between the primer sequence and the 
-	               read for the best matching primer. The dotted line indicates the error threshold used."))
-	figures("primers_error", 
-	        paste("Distribution of primer match error rates for", plot_titles[1], "(top) and", plot_titles[2], "(bottom),",
-	              "broken down by assigned primer. The error rate is the percentage of mismatches between the 
-	               primer sequence and the read for the best matching primer. The dotted line indicates the error
-	               threshold used."))
-	```
-	
-	```{r, echo=FALSE}
-	primer_log_1 <- loadLogTable(file.path(".", "!{primers_1}"))
-	primer_log_2 <- loadLogTable(file.path(".", "!{primers_2}"))
-	```
-	
-	# Primer Identification
-	
-	The MaskPrimers tool supports identification of multiplexed primers and UMIs.
-	Identified primer regions may be masked (with Ns) or cut to mitigate downstream
-	SHM analysis artifacts due to errors in the primer region. An annotion is added to 
-	each sequences that indicates the UMI and best matching primer. In the case of
-	the constant region primer, the primer annotation may also be used for isotype 
-	assignment.
-	
-	## Count of primer matches
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles,
-	                style="count", sizing="figure")
-	```
-	
-	`r figures("primers_count")`
-	
-	## Primer match error rates
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
-	                style="hist", sizing="figure")
-	```
-	
-	`r figures("primers_hist")`
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
-	                style="error", sizing="figure")
-	```
-	
-	`r figures("primers_error")`
-	
-	EOF
-	
-	open OUT, ">!{name}.rmd";
-	print OUT $script;
-	close OUT;
-	
-	'''
-
-}else{
-
-	readArray = primers.toString().split(' ')
-	primers = readArray.grep(~/.*.tab*/)[0]
-
-	'''
-	#!/usr/bin/env perl
-	
-	
-	my $script = <<'EOF';
-	
-	
-	```{r, message=FALSE, echo=FALSE, results="hide"}
-	
-	# Setup
-	library(prestor)
-	library(knitr)
-	library(captioner)
-	
-	
-	plot_titles<- c("Read")
-	print(plot_titles)
-	if (!exists("tables")) { tables <- captioner(prefix="Table") }
-	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
-	figures("primers_count", 
-	        paste("Count of assigned primers for",  plot_titles[1],
-	              "The bar height indicates the total reads assigned to the given primer,
-	               stacked for those under the error rate threshold (Pass) and
-	               over the threshold (Fail)."))
-	figures("primers_hist", 
-	        paste("Distribution of primer match error rates for", plot_titles[1],
-	              "The error rate is the percentage of mismatches between the primer sequence and the 
-	               read for the best matching primer. The dotted line indicates the error threshold used."))
-	figures("primers_error", 
-	        paste("Distribution of primer match error rates for", plot_titles[1],
-	              "broken down by assigned primer. The error rate is the percentage of mismatches between the 
-	               primer sequence and the read for the best matching primer. The dotted line indicates the error
-	               threshold used."))
-	```
-	
-	```{r, echo=FALSE}
-	primer_log_1 <- loadLogTable(file.path(".", "!{primers}"))
-	```
-	
-	# Primer Identification
-	
-	The MaskPrimers tool supports identification of multiplexed primers and UMIs.
-	Identified primer regions may be masked (with Ns) or cut to mitigate downstream
-	SHM analysis artifacts due to errors in the primer region. An annotion is added to 
-	each sequences that indicates the UMI and best matching primer. In the case of
-	the constant region primer, the primer annotation may also be used for isotype 
-	assignment.
-	
-	## Count of primer matches
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, titles=plot_titles,
-	                style="count", sizing="figure")
-	```
-	
-	`r figures("primers_count")`
-	
-	## Primer match error rates
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, titles=plot_titles, 
-	                style="hist", sizing="figure")
-	```
-	
-	`r figures("primers_hist")`
-	
-	```{r, echo=FALSE, warning=FALSE}
-	plotMaskPrimers(primer_log_1, titles=plot_titles, 
-	                style="error", sizing="figure")
-	```
-	
-	`r figures("primers_error")`
-	
-	EOF
-	
-	open OUT, ">!{name}.rmd";
-	print OUT $script;
-	close OUT;
-	
-	'''
-}
-}
-
-
-process Mask_Primer_2_render_rmarkdown {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.html$/) "MP_report/$filename"}
-input:
- file rmk from g18_12_rMarkdown0_g18_16
-
-output:
- file "*.html"  into g18_16_outputFileHTML00
- file "*csv" optional true  into g18_16_csvFile11
-
-"""
-
-#!/usr/bin/env Rscript 
-
-rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
-
-"""
-}
-
-
 process make_report_pipeline_cat_all_file {
 
 input:
- set val(name), file(log_file) from g9_11_logFile3_g72_0
+ set val(name), file(log_file) from g_80_logFile1_g72_0
  set val(name), file(log_file) from g53_9_logFile1_g72_0
- set val(name), file(log_file) from g13_10_logFile2_g72_0
  set val(name), file(log_file) from g15_9_logFile1_g72_0
- set val(name), file(log_file) from g18_11_logFile3_g72_0
  set val(name), file(log_file) from g20_15_logFile1_g72_0
  set val(name), file(log_file) from g21_16_logFile4_g72_0
 
@@ -1961,6 +1747,243 @@ input:
 output:
  file "*.html"  into g72_1_outputFileHTML00
  file "*csv" optional true  into g72_1_csvFile11
+
+"""
+
+#!/usr/bin/env Rscript 
+
+rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
+
+"""
+}
+
+
+process Mask_Primer_2_parse_log_MP {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*table.tab$/) "MP2_log_table/$filename"}
+input:
+ val mate from g_54_mate_g18_9
+ set val(name), file(log_file) from g18_11_logFile2_g18_9
+
+output:
+ file "*table.tab"  into g18_9_logFile0_g18_12, g18_9_logFile0_g18_19
+
+script:
+readArray = log_file.toString()	
+
+"""
+ParseLog.py -l ${readArray}  -f ID PRIMER BARCODE ERROR
+"""
+
+}
+
+
+process Mask_Primer_2_try_report_maskprimer {
+
+input:
+ file primers from g18_9_logFile0_g18_12
+ val mate from g_54_mate_g18_12
+
+output:
+ file "*.rmd"  into g18_12_rMarkdown0_g18_19
+
+
+shell:
+
+if(mate=="pair"){
+	readArray = primers.toString().split(' ')	
+	primers_1 = readArray[0]
+	primers_2 = readArray[1]
+	name = primers_1 - "_table.tab"
+	'''
+	#!/usr/bin/env perl
+	
+	
+	my $script = <<'EOF';
+	
+	
+	```{r, message=FALSE, echo=FALSE, results="hide"}
+	
+	# Setup
+	library(prestor)
+	library(knitr)
+	library(captioner)
+	
+	
+	plot_titles<- c("Read 1", "Read 2")
+	print(plot_titles)
+	if (!exists("tables")) { tables <- captioner(prefix="Table") }
+	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
+	figures("primers_count", 
+	        paste("Count of assigned primers for",  plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
+	              "The bar height indicates the total reads assigned to the given primer,
+	               stacked for those under the error rate threshold (Pass) and
+	               over the threshold (Fail)."))
+	figures("primers_hist", 
+	        paste("Distribution of primer match error rates for", plot_titles[1], "(top) and", plot_titles[2], "(bottom).",
+	              "The error rate is the percentage of mismatches between the primer sequence and the 
+	               read for the best matching primer. The dotted line indicates the error threshold used."))
+	figures("primers_error", 
+	        paste("Distribution of primer match error rates for", plot_titles[1], "(top) and", plot_titles[2], "(bottom),",
+	              "broken down by assigned primer. The error rate is the percentage of mismatches between the 
+	               primer sequence and the read for the best matching primer. The dotted line indicates the error
+	               threshold used."))
+	```
+	
+	```{r, echo=FALSE}
+	primer_log_1 <- loadLogTable(file.path(".", "!{primers_1}"))
+	primer_log_2 <- loadLogTable(file.path(".", "!{primers_2}"))
+	
+	primer_log1_error <- any(is.na(primer_log_1[['ERROR']]))
+	primer_log2_error<- any(is.na(primer_log_2[['ERROR']]))
+	
+	```
+	
+	# Primer Identification
+	
+	The MaskPrimers tool supports identification of multiplexed primers and UMIs.
+	Identified primer regions may be masked (with Ns) or cut to mitigate downstream
+	SHM analysis artifacts due to errors in the primer region. An annotion is added to 
+	each sequences that indicates the UMI and best matching primer. In the case of
+	the constant region primer, the primer annotation may also be used for isotype 
+	assignment.
+	
+	## Count of primer matches
+	
+	```{r, echo=FALSE, warning=FALSE}
+	if(!primer_log1_error && !primer_log2_error)
+		plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles,
+	                style="count", sizing="figure")
+	```
+	
+	`r figures("primers_count")`
+	
+	## Primer match error rates
+	
+	```{r, echo=FALSE, warning=FALSE}
+	if(!primer_log1_error && !primer_log2_error)
+		plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
+	                style="hist", sizing="figure")
+	```
+	
+	`r figures("primers_hist")`
+	
+	```{r, echo=FALSE, warning=FALSE}
+	# check the error column exists 
+	if(!primer_log1_error && !primer_log2_error)
+		plotMaskPrimers(primer_log_1, primer_log_2, titles=plot_titles, 
+	                style="error", sizing="figure")
+	```
+	
+	`r figures("primers_error")`
+	
+	EOF
+	
+	open OUT, ">!{name}.rmd";
+	print OUT $script;
+	close OUT;
+	
+	'''
+
+}else{
+
+	readArray = primers.toString().split(' ')
+	primers = readArray[0]
+	name = primers - "_table.tab"
+	'''
+	#!/usr/bin/env perl
+	
+	
+	my $script = <<'EOF';
+	
+	
+	```{r, message=FALSE, echo=FALSE, results="hide"}
+	
+	# Setup
+	library(prestor)
+	library(knitr)
+	library(captioner)
+	
+	
+	plot_titles<- c("Read")
+	print(plot_titles)
+	if (!exists("tables")) { tables <- captioner(prefix="Table") }
+	if (!exists("figures")) { figures <- captioner(prefix="Figure") }
+	figures("primers_count", 
+	        paste("Count of assigned primers for",  plot_titles[1],
+	              "The bar height indicates the total reads assigned to the given primer,
+	               stacked for those under the error rate threshold (Pass) and
+	               over the threshold (Fail)."))
+	figures("primers_hist", 
+	        paste("Distribution of primer match error rates for", plot_titles[1],
+	              "The error rate is the percentage of mismatches between the primer sequence and the 
+	               read for the best matching primer. The dotted line indicates the error threshold used."))
+	figures("primers_error", 
+	        paste("Distribution of primer match error rates for", plot_titles[1],
+	              "broken down by assigned primer. The error rate is the percentage of mismatches between the 
+	               primer sequence and the read for the best matching primer. The dotted line indicates the error
+	               threshold used."))
+	```
+	
+	```{r, echo=FALSE}
+	primer_log_1 <- loadLogTable(file.path(".", "!{primers}"))
+	```
+	
+	# Primer Identification
+	
+	The MaskPrimers tool supports identification of multiplexed primers and UMIs.
+	Identified primer regions may be masked (with Ns) or cut to mitigate downstream
+	SHM analysis artifacts due to errors in the primer region. An annotion is added to 
+	each sequences that indicates the UMI and best matching primer. In the case of
+	the constant region primer, the primer annotation may also be used for isotype 
+	assignment.
+	
+	## Count of primer matches
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotMaskPrimers(primer_log_1, titles=plot_titles,
+	                style="count", sizing="figure")
+	```
+	
+	`r figures("primers_count")`
+	
+	## Primer match error rates
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotMaskPrimers(primer_log_1, titles=plot_titles, 
+	                style="hist", sizing="figure")
+	```
+	
+	`r figures("primers_hist")`
+	
+	```{r, echo=FALSE, warning=FALSE}
+	plotMaskPrimers(primer_log_1, titles=plot_titles, 
+	                style="error", sizing="figure")
+	```
+	
+	`r figures("primers_error")`
+	
+	EOF
+	
+	open OUT, ">!{name}.rmd";
+	print OUT $script;
+	close OUT;
+	
+	'''
+}
+}
+
+
+process Mask_Primer_2_presto_render_rmarkdown {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.html$/) "MP_report/$filename"}
+input:
+ file rmk from g18_12_rMarkdown0_g18_19
+ file log_file from g18_9_logFile0_g18_19
+
+output:
+ file "*.html"  into g18_19_outputFileHTML00
+ file "*csv" optional true  into g18_19_csvFile11
 
 """
 
