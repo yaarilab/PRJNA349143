@@ -32,31 +32,45 @@ output:
 
 script:
 
-readArray = reads.toString().split(' ')	
-R1 = readArray[0]
-R2 = readArray[1]
-
-"""
-case "$R1" in
-*.gz | *.tgz ) 
-        gunzip -c $R1 > R1.fastq
-        ;;
-*)
-        cp $R1 ./R1.fastq
-        echo "$R1 not gzipped"
-        ;;
-esac
-
-case "$R2" in
-*.gz | *.tgz ) 
-        gunzip -c $R2 > R2.fastq
-        ;;
-*)
-        cp $R2 ./R2.fastq
-        echo "$R2 not gzipped"
-        ;;
-esac
-"""
+if(mate=="pair"){
+	readArray = reads.toString().split(' ')	
+	R1 = readArray[0]
+	R2 = readArray[1]
+	
+	"""
+	case "$R1" in
+	*.gz | *.tgz ) 
+	        gunzip -c $R1 > R1.fastq
+	        ;;
+	*)
+	        cp $R1 ./R1.fastq
+	        echo "$R1 not gzipped"
+	        ;;
+	esac
+	
+	case "$R2" in
+	*.gz | *.tgz ) 
+	        gunzip -c $R2 > R2.fastq
+	        ;;
+	*)
+	        cp $R2 ./R2.fastq
+	        echo "$R2 not gzipped"
+	        ;;
+	esac
+	"""
+}else{
+	"""
+	case "$reads" in
+	*.gz | *.tgz ) 
+	        gunzip -c $reads > R1.fastq
+	        ;;
+	*)
+	        cp $reads ./R1.fastq
+	        echo "$reads not gzipped"
+	        ;;
+	esac
+	"""
+}
 }
 
 
@@ -402,48 +416,6 @@ if(mate=="pair"){
 }
 
 
-process Pair_Sequence_pre_consensus_pair_seq {
-
-input:
- set val(name),file(reads) from g9_11_reads0_g53_9
- val mate from g_11_mate_g53_9
-
-output:
- set val(name),file("*_pair-pass.fastq")  into g53_9_reads0_g13_10
- set val(name),file("out*")  into g53_9_logFile1_g72_0
-
-script:
-coord = params.Pair_Sequence_pre_consensus_pair_seq.coord
-act = params.Pair_Sequence_pre_consensus_pair_seq.act
-copy_fields_1 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_1
-copy_fields_2 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_2
-failed = params.Pair_Sequence_pre_consensus_pair_seq.failed
-nproc = params.Pair_Sequence_pre_consensus_pair_seq.nproc
-
-if(mate=="pair"){
-	
-	act = (act=="none") ? "" : "--act ${act}"
-	failed = (failed=="true") ? "--failed" : "" 
-	copy_fields_1 = (copy_fields_1=="") ? "" : "--1f ${copy_fields_1}" 
-	copy_fields_2 = (copy_fields_2=="") ? "" : "--2f ${copy_fields_2}"
-	
-	readArray = reads.toString().split(' ')	
-	R1 = readArray[0]
-	R2 = readArray[1]
-	"""
-	PairSeq.py -1 ${R1} -2 ${R2} ${copy_fields_1} ${copy_fields_2} --coord ${coord} ${act} ${failed} >> out_${R1}_PS.log
-	"""
-}else{
-	
-	"""
-	echo -e 'PairSeq works only on pair-end reads.'
-	"""
-}
-
-
-}
-
-
 process Mask_Primer_1_parse_log_MP {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*table.tab$/) "MP1_log_table/$filename"}
@@ -680,6 +652,48 @@ rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_di
 """
 }
 
+
+process Pair_Sequence_pre_consensus_pair_seq {
+
+input:
+ set val(name),file(reads) from g9_11_reads0_g53_9
+ val mate from g_11_mate_g53_9
+
+output:
+ set val(name),file("*_pair-pass.fastq")  into g53_9_reads0_g13_10
+ set val(name),file("out*")  into g53_9_logFile1_g72_0
+
+script:
+coord = params.Pair_Sequence_pre_consensus_pair_seq.coord
+act = params.Pair_Sequence_pre_consensus_pair_seq.act
+copy_fields_1 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_1
+copy_fields_2 = params.Pair_Sequence_pre_consensus_pair_seq.copy_fields_2
+failed = params.Pair_Sequence_pre_consensus_pair_seq.failed
+nproc = params.Pair_Sequence_pre_consensus_pair_seq.nproc
+
+if(mate=="pair"){
+	
+	act = (act=="none") ? "" : "--act ${act}"
+	failed = (failed=="true") ? "--failed" : "" 
+	copy_fields_1 = (copy_fields_1=="") ? "" : "--1f ${copy_fields_1}" 
+	copy_fields_2 = (copy_fields_2=="") ? "" : "--2f ${copy_fields_2}"
+	
+	readArray = reads.toString().split(' ')	
+	R1 = readArray[0]
+	R2 = readArray[1]
+	"""
+	PairSeq.py -1 ${R1} -2 ${R2} ${copy_fields_1} ${copy_fields_2} --coord ${coord} ${act} ${failed} >> out_${R1}_PS.log
+	"""
+}else{
+	
+	"""
+	echo -e 'PairSeq works only on pair-end reads.'
+	"""
+}
+
+
+}
+
 boolean isCollectionOrArray_bc(object) {    
     [Collection, Object[]].any { it.isAssignableFrom(object.getClass()) }
 }
@@ -784,48 +798,6 @@ if(mate=="pair"){
 }else{
 	"""
 	BuildConsensus.py -s $reads ${args_1} --outname ${name} --log BC_${name}.log ${failed} --nproc ${nproc} 2>&1 | tee -a out_${R1}_BC.log
-	"""
-}
-
-
-}
-
-
-process Pair_Sequence_post_consensus_pair_seq {
-
-input:
- set val(name),file(reads) from g13_10_reads0_g15_9
- val mate from g_11_mate_g15_9
-
-output:
- set val(name),file("*_pair-pass.fastq")  into g15_9_reads0_g12_12
- set val(name),file("out*")  into g15_9_logFile1_g72_0
-
-script:
-coord = params.Pair_Sequence_post_consensus_pair_seq.coord
-act = params.Pair_Sequence_post_consensus_pair_seq.act
-copy_fields_1 = params.Pair_Sequence_post_consensus_pair_seq.copy_fields_1
-copy_fields_2 = params.Pair_Sequence_post_consensus_pair_seq.copy_fields_2
-failed = params.Pair_Sequence_post_consensus_pair_seq.failed
-nproc = params.Pair_Sequence_post_consensus_pair_seq.nproc
-
-if(mate=="pair"){
-	
-	act = (act=="none") ? "" : "--act ${act}"
-	failed = (failed=="true") ? "--failed" : "" 
-	copy_fields_1 = (copy_fields_1=="") ? "" : "--1f ${copy_fields_1}" 
-	copy_fields_2 = (copy_fields_2=="") ? "" : "--2f ${copy_fields_2}"
-	
-	readArray = reads.toString().split(' ')	
-	R1 = readArray[0]
-	R2 = readArray[1]
-	"""
-	PairSeq.py -1 ${R1} -2 ${R2} ${copy_fields_1} ${copy_fields_2} --coord ${coord} ${act} ${failed} >> out_${R1}_PS.log
-	"""
-}else{
-	
-	"""
-	echo -e 'PairSeq works only on pair-end reads.'
 	"""
 }
 
@@ -1081,6 +1053,48 @@ output:
 rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
 
 """
+}
+
+
+process Pair_Sequence_post_consensus_pair_seq {
+
+input:
+ set val(name),file(reads) from g13_10_reads0_g15_9
+ val mate from g_11_mate_g15_9
+
+output:
+ set val(name),file("*_pair-pass.fastq")  into g15_9_reads0_g12_12
+ set val(name),file("out*")  into g15_9_logFile1_g72_0
+
+script:
+coord = params.Pair_Sequence_post_consensus_pair_seq.coord
+act = params.Pair_Sequence_post_consensus_pair_seq.act
+copy_fields_1 = params.Pair_Sequence_post_consensus_pair_seq.copy_fields_1
+copy_fields_2 = params.Pair_Sequence_post_consensus_pair_seq.copy_fields_2
+failed = params.Pair_Sequence_post_consensus_pair_seq.failed
+nproc = params.Pair_Sequence_post_consensus_pair_seq.nproc
+
+if(mate=="pair"){
+	
+	act = (act=="none") ? "" : "--act ${act}"
+	failed = (failed=="true") ? "--failed" : "" 
+	copy_fields_1 = (copy_fields_1=="") ? "" : "--1f ${copy_fields_1}" 
+	copy_fields_2 = (copy_fields_2=="") ? "" : "--2f ${copy_fields_2}"
+	
+	readArray = reads.toString().split(' ')	
+	R1 = readArray[0]
+	R2 = readArray[1]
+	"""
+	PairSeq.py -1 ${R1} -2 ${R2} ${copy_fields_1} ${copy_fields_2} --coord ${coord} ${act} ${failed} >> out_${R1}_PS.log
+	"""
+}else{
+	
+	"""
+	echo -e 'PairSeq works only on pair-end reads.'
+	"""
+}
+
+
 }
 
 
@@ -1640,124 +1654,6 @@ mv ${reads} ${chain}
 }
 
 
-process make_report_pipeline_cat_all_file {
-
-input:
- set val(name), file(log_file) from g_80_logFile1_g72_0
- set val(name), file(log_file) from g53_9_logFile1_g72_0
- set val(name), file(log_file) from g15_9_logFile1_g72_0
- set val(name), file(log_file) from g20_15_logFile1_g72_0
- set val(name), file(log_file) from g21_16_logFile4_g72_0
-
-output:
- set val(name), file("all_out_file.log")  into g72_0_logFile0_g72_2
-
-script:
-readArray = log_file.toString()
-
-"""
-
-echo $readArray
-cat out* >> all_out_file.log
-"""
-
-}
-
-
-process make_report_pipeline_report_pipeline {
-
-input:
- set val(name), file(log_files) from g72_0_logFile0_g72_2
-
-output:
- file "*.rmd"  into g72_2_rMarkdown0_g72_1
-
-
-shell:
-
-readArray = log_files.toString().split(' ')
-R1 = readArray[0]
-
-'''
-#!/usr/bin/env perl
-
-
-my $script = <<'EOF';
-
-
-```{r, message=FALSE, echo=FALSE, results="hide"}
-# Setup
-library(prestor)
-library(knitr)
-library(captioner)
-
-plot_titles <- c("Read 1", "Read 2")
-if (!exists("tables")) { tables <- captioner(prefix="Table") }
-if (!exists("figures")) { figures <- captioner(prefix="Figure") }
-tables("count", 
-       "The count of reads that passed and failed each processing step.")
-figures("steps", 
-        paste("The number of reads or read sets retained at each processing step. 
-               Shown as raw counts (top) and percentages of input from the previous 
-               step (bottom). Steps having more than one column display individual values for", 
-              plot_titles[1], "(first column) and", plot_titles[2], "(second column)."))
-```
-
-```{r, echo=FALSE}
-console_log <- loadConsoleLog(file.path(".","!{R1}"))
-```
-
-# Summary of Processing Steps
-
-```{r, echo=FALSE}
-count_df <- plotConsoleLog(console_log, sizing="figure")
-
-df<-count_df[,c("task", "pass", "fail")]
-
-write.csv(df,"pipeline_statistics.csv") 
-```
-
-`r figures("steps")`
-
-```{r, echo=FALSE}
-kable(count_df[c("step", "task", "total", "pass", "fail")],
-      col.names=c("Step", "Task", "Input", "Passed", "Failed"),
-      digits=3)
-```
-
-`r tables("count")`
-
-
-EOF
-	
-open OUT, ">pipeline_statistic_!{name}.rmd";
-print OUT $script;
-close OUT;
-
-'''
-}
-
-
-process make_report_pipeline_render_rmarkdown {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.html$/) "out_report/$filename"}
-input:
- file rmk from g72_2_rMarkdown0_g72_1
-
-output:
- file "*.html"  into g72_1_outputFileHTML00
- file "*csv" optional true  into g72_1_csvFile11
-
-"""
-
-#!/usr/bin/env Rscript 
-
-rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
-
-"""
-}
-
-
 process Mask_Primer_2_parse_log_MP {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*table.tab$/) "MP2_log_table/$filename"}
@@ -1984,6 +1880,124 @@ input:
 output:
  file "*.html"  into g18_19_outputFileHTML00
  file "*csv" optional true  into g18_19_csvFile11
+
+"""
+
+#!/usr/bin/env Rscript 
+
+rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
+
+"""
+}
+
+
+process make_report_pipeline_cat_all_file {
+
+input:
+ set val(name), file(log_file) from g_80_logFile1_g72_0
+ set val(name), file(log_file) from g53_9_logFile1_g72_0
+ set val(name), file(log_file) from g15_9_logFile1_g72_0
+ set val(name), file(log_file) from g20_15_logFile1_g72_0
+ set val(name), file(log_file) from g21_16_logFile4_g72_0
+
+output:
+ set val(name), file("all_out_file.log")  into g72_0_logFile0_g72_2
+
+script:
+readArray = log_file.toString()
+
+"""
+
+echo $readArray
+cat out* >> all_out_file.log
+"""
+
+}
+
+
+process make_report_pipeline_report_pipeline {
+
+input:
+ set val(name), file(log_files) from g72_0_logFile0_g72_2
+
+output:
+ file "*.rmd"  into g72_2_rMarkdown0_g72_1
+
+
+shell:
+
+readArray = log_files.toString().split(' ')
+R1 = readArray[0]
+
+'''
+#!/usr/bin/env perl
+
+
+my $script = <<'EOF';
+
+
+```{r, message=FALSE, echo=FALSE, results="hide"}
+# Setup
+library(prestor)
+library(knitr)
+library(captioner)
+
+plot_titles <- c("Read 1", "Read 2")
+if (!exists("tables")) { tables <- captioner(prefix="Table") }
+if (!exists("figures")) { figures <- captioner(prefix="Figure") }
+tables("count", 
+       "The count of reads that passed and failed each processing step.")
+figures("steps", 
+        paste("The number of reads or read sets retained at each processing step. 
+               Shown as raw counts (top) and percentages of input from the previous 
+               step (bottom). Steps having more than one column display individual values for", 
+              plot_titles[1], "(first column) and", plot_titles[2], "(second column)."))
+```
+
+```{r, echo=FALSE}
+console_log <- loadConsoleLog(file.path(".","!{R1}"))
+```
+
+# Summary of Processing Steps
+
+```{r, echo=FALSE}
+count_df <- plotConsoleLog(console_log, sizing="figure")
+
+df<-count_df[,c("task", "pass", "fail")]
+
+write.csv(df,"pipeline_statistics.csv") 
+```
+
+`r figures("steps")`
+
+```{r, echo=FALSE}
+kable(count_df[c("step", "task", "total", "pass", "fail")],
+      col.names=c("Step", "Task", "Input", "Passed", "Failed"),
+      digits=3)
+```
+
+`r tables("count")`
+
+
+EOF
+	
+open OUT, ">pipeline_statistic_!{name}.rmd";
+print OUT $script;
+close OUT;
+
+'''
+}
+
+
+process make_report_pipeline_render_rmarkdown {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*.html$/) "out_report/$filename"}
+input:
+ file rmk from g72_2_rMarkdown0_g72_1
+
+output:
+ file "*.html"  into g72_1_outputFileHTML00
+ file "*csv" optional true  into g72_1_csvFile11
 
 """
 
